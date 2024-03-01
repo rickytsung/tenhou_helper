@@ -3,9 +3,21 @@ import asyncio
 import aiohttp
 from mahjong.shanten import Shanten
 from mahjong.tile import TilesConverter
-paipu = 'https://tenhou.net/3/?log=2024022923gm-00b9-0000-ada8090e&tw=1' # a paipu for example 
+paipu2 = 'https://tenhou.net/3/?log=2024022923gm-00b9-0000-ada8090e&tw=1'
+paipu = 'https://tenhou.net/0/?log=2024020111gm-0039-0000-6ce178ca&tw=2' #example
 
 async def cal_battle(my_paipu):
+  def merge_str(list):
+    if isinstance(list,(str, int)):
+      return str(list) + " "
+    ret = ""
+    for i in list:
+      ret += str(i) + " "
+    return ret
+    
+  if(len(my_paipu) != 62):
+    raise Exception("Wrong paipu length")
+  
   pid = my_paipu[26:57]
   seat = int(my_paipu[61])
   data = {}
@@ -22,14 +34,23 @@ async def cal_battle(my_paipu):
   east = 1 # = 2 if 東
   if(data['name'][3] == ''):
     p = 3
-  if('東' in data['rule']['disp']):
-    east = 2
+  # if('東' in data['rule']['disp']):
+  #   east = 2
   lst = []
   player_name = data['name'][seat] 
   for j in range(p):
-     lst.append([data['name'][j], data['sc'][2*j+1], data['sc'][2*j]] )
+     lst.append([data['name'][j], data['sc'][2*j+1], data['sc'][2*j]])
   lst.sort(key=lambda x:x[1],reverse=True)
-  #print(player_name, lst)
+
+  general = [0] * 9
+  general[0] = "100" # api ver
+  general[1] = 1
+  for finalrank, finallst in enumerate(lst, start = 3):
+    if(finallst[0] == player_name):
+      general[finalrank] = 1
+      if(finallst[2] < 0):
+        general[7] = 1
+      
   shanten = Shanten()
 
   match_count = 0
@@ -161,9 +182,12 @@ async def cal_battle(my_paipu):
     if(result[0] == "流局"):
       noagari[0] += 1
       noagari[1] += result[1][seat]
-  #agari, agari_pt, dealin, dealin_pt, rich, dama, furo, agari_type, luck
-  print("總局數")
-  print(match_count)
+  general[2] = match_count
+  general[8] = agari_pt - dealin_pt
+  all_data = [general, agari, agari_pt, dealin, dealin_pt,
+              noagari, rich, dama, furo, agari_type, luck]
+  print("總統計(場數/局數/1/2/3/4/起飛/局收支)")
+  print(general)
   print("和牌次數")
   print(agari)
   print("和牌打點")
@@ -172,7 +196,7 @@ async def cal_battle(my_paipu):
   print(dealin)
   print("放銃銃點")
   print(dealin_pt)
-  print("流局(次數, 罰符)")
+  print("流局(次數/罰符)")
   print(noagari)
   print("立直(立直次數/和/銃/和點/銃點/一發/巡數)")
   print(rich)
@@ -184,6 +208,11 @@ async def cal_battle(my_paipu):
   print(agari_type)
   print("運氣(配牌向聽/和牌寶數/裏寶/被炸數(-40up)/被炸點")
   print(luck)
-  
+
+  ret_str = "" # for bot usage
+  for data_item in all_data:
+    ret_str += merge_str(data_item)
+  print("回傳字串")
+  print(ret_str)
 asyncio.run(cal_battle(paipu))
 
