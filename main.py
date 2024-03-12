@@ -1,12 +1,10 @@
 import json
-import asyncio
 import aiohttp
+import asyncio
 from mahjong.shanten import Shanten
 from mahjong.tile import TilesConverter
-paipu2 = 'https://tenhou.net/3/?log=2024022923gm-00b9-0000-ada8090e&tw=1'
-paipu = 'https://tenhou.net/0/?log=2024020111gm-0039-0000-6ce178ca&tw=2' #example
 
-async def cal_battle(my_paipu):
+async def go2(my_paipu):
   def merge_str(list):
     if isinstance(list,(str, int)):
       return str(list) + " "
@@ -14,10 +12,10 @@ async def cal_battle(my_paipu):
     for i in list:
       ret += str(i) + " "
     return ret
-    
+
   if(len(my_paipu) != 62):
-    raise Exception("Wrong paipu length")
-  
+    raise Exception("Wrong paipu link length")
+
   pid = my_paipu[26:57]
   seat = int(my_paipu[61])
   data = {}
@@ -27,13 +25,14 @@ async def cal_battle(my_paipu):
 
           if r.status == 200:
             data = json.loads(await r.text())
-            print(data)
           else:
             raise Exception("Couldn't fetch paipu, maybe wrong format?")
   p = 4
   east = 1 # = 2 if 東
+  start_pt = 25000  
   if(data['name'][3] == ''):
     p = 3
+    start_pt = 35000
   # if('東' in data['rule']['disp']):
   #   east = 2
   lst = []
@@ -43,14 +42,15 @@ async def cal_battle(my_paipu):
   lst.sort(key=lambda x:x[1],reverse=True)
 
   general = [0] * 9
-  general[0] = "100" # api ver
+  general[0] = 100 # api ver
   general[1] = 1
   for finalrank, finallst in enumerate(lst, start = 3):
     if(finallst[0] == player_name):
       general[finalrank] = 1
+      general[8] = finallst[2] - start_pt  
       if(finallst[2] < 0):
-        general[7] = 1
-      
+        general[7] = 1 
+
   shanten = Shanten()
 
   match_count = 0
@@ -64,13 +64,14 @@ async def cal_battle(my_paipu):
   furo = [0] * 5 #率 和率	銃率	打點	銃點
   #agari_size = [0] * 5# [満貫, 跳満, 倍満, 三倍満, 役満]
   agari_type = [0] * 12 # [平和率	斷么率	役牌率	一氣率	對對率 5 染手率 全帶率 三色率	七対率	暗刻率 10 自摸率  嶺上率]
-  luck = [0] * 5 
-  
+  luck = [0] * 6
+
   for match in data['log']:
     match_count += 1
     dealer = False
-    if(match[0][1] % 4 == seat):
+    if(match[0][0] % 4 == seat):
       dealer = True
+      luck[5] += 1
     riichi = False
     furoed = False
     haipai = match[4 + seat * 3]
@@ -99,9 +100,10 @@ async def cal_battle(my_paipu):
 
     for mo in mopai:
       for key in ['p', 'k', 'c']:
-        if (key in str(mo)):
+        if ((not furoed) and key in str(mo)):
           furoed = True
-          
+          furo[0] += 1
+
     for jun, da in enumerate(dapai, start=1):
       if ('r' in str(da)):
         riichi = True
@@ -155,12 +157,12 @@ async def cal_battle(my_paipu):
               luck[1] += int(things[-3])
               # over 10 doras
               if(things[-4] == '1'): luck[1] += 10
-    
+
             if("裏ドラ" in things):
               luck[2] += 1
             if("一発" in things):
               rich[5] += 1
-              
+
         if(dpt[seat] < 0):
           cnt = 0
           for people in range(p):
@@ -183,7 +185,7 @@ async def cal_battle(my_paipu):
       noagari[0] += 1
       noagari[1] += result[1][seat]
   general[2] = match_count
-  general[8] = agari_pt - dealin_pt
+  #general[8] /= match_count
   all_data = [general, agari, agari_pt, dealin, dealin_pt,
               noagari, rich, dama, furo, agari_type, luck]
   print("總統計(場數/局數/1/2/3/4/起飛/局收支)")
@@ -206,13 +208,16 @@ async def cal_battle(my_paipu):
   print(furo)
   print("和牌(平/斷/役/一氣/対対/染/全帶/三色/七対/暗刻/門摸/嶺)")
   print(agari_type)
-  print("運氣(配牌向聽/和牌寶數/裏寶/被炸數(-40up)/被炸點")
+  print("運氣(配牌向聽/和牌寶數/裏寶/親被(-40up)/親被炸點/親家數")
   print(luck)
-
+  print("表格用字串")
   ret_str = "" # for bot usage
   for data_item in all_data:
     ret_str += merge_str(data_item)
-  print("回傳字串")
   print(ret_str)
-asyncio.run(cal_battle(paipu))
+  print("======")
 
+#put your paipu here
+paipu_list = ["https://tenhou.net/0/?log=2024031207gm-0029-0000-01cd289a&tw=0"]
+for plink in paipu_list:
+  asyncio.run(go2(plink))
