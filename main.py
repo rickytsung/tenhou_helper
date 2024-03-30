@@ -74,10 +74,12 @@ async def go2(my_paipu):
       luck[5] += 1
     riichi = False
     furoed = False
+    zi = 0
     haipai = match[4 + seat * 3]
     mopai = match[5 + seat * 3]
     dapai = match[6 + seat * 3]
     hpm = ""; hpp = ""; hps = ""; hpz = ""
+    
     for hpai in haipai:
       if(hpai == 51): 
         hpm += '5'
@@ -133,9 +135,10 @@ async def go2(my_paipu):
               agari_type[0] += 1
             if("断幺" in things):
               agari_type[1] += 1
-            if("役牌" in things):
+            if(zi == 0 and ("役牌" in things or "風" in things)):
               agari_type[2] += 1
-            if("一氣" in things):
+              zi = 1
+            if("一気" in things):
               agari_type[3] += 1
             if("対々" in things):
               agari_type[4] += 1
@@ -217,7 +220,6 @@ async def go2(my_paipu):
   print(ret_str)
   print("======")
 
-#put your paipu here
-paipu_list = ["https://tenhou.net/0/?log=2024031207gm-0029-0000-01cd289a&tw=0"]
+paipu_list = ["https://tenhou.net/0/?log=2024033011gm-0029-0000-b388e46c&tw=2"]
 for plink in paipu_list:
   asyncio.run(go2(plink))
